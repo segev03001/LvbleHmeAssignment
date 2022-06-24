@@ -17,14 +17,14 @@ def createDB(curs):
         return e.args[0]
 
 
-def createTables(curs):
+def createTables(curs, tableName):
     # Dropping tables if already exists.
-    curs.execute("select exists(select * from information_schema.tables where table_name=%s)", ('mytable',))
+    curs.execute("select exists(select * from information_schema.tables where table_name=%s)", (tableName,))
     if curs.fetchone()[0]:
-        print("Tables clickPay already exists")
+        print("Tables clickPay already exists\n")
     else:
         # Creating table as per requirement
-        clickPayTable = '''CREATE TABLE public."clickPay"
+        clickPayTable = '''CREATE TABLE public."{tableName}"
         (
         username  character varying(30) COLLATE pg_catalog."default" NOT NULL,
         address  character varying(30) COLLATE pg_catalog."default",
@@ -35,8 +35,8 @@ def createTables(curs):
     
         TABLESPACE pg_default;
     
-        ALTER TABLE public."clickPay"
-        OWNER to postgres;'''
+        ALTER TABLE public."{tableName}"
+        OWNER to postgres;'''.format(tableName=tableName)
         try:
             curs.execute(clickPayTable)
             print("clickPay tables created successfully\n")

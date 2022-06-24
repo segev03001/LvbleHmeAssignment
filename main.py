@@ -2,8 +2,39 @@ import requests
 import postgresHandler
 import clickPayrequests
 import psycopg2
+import sys
 
-if __name__ == '__main__':
+
+def clickpayConnect(username, password):
+    try:
+        with requests.Session() as s:
+            clickPayrequests.login(username, password)
+            UserProfileParams = clickPayrequests.getUserProfileData()
+            PayNowParams = clickPayrequests.getPayNowData()
+            UserProfileResponse = s.post(UserProfileParams[0], headers=UserProfileParams[2], data=UserProfileParams[1])
+            PayNowParamsResponse = s.post(PayNowParams[0], headers=PayNowParams[2], data=PayNowParams[1])
+    except Exception as e:
+        print("We got some problems to connect")
+
+    if 'Error' in PayNowParamsResponse.json():
+        print("Error accrue: " + PayNowParamsResponse.json()['Error']['Text'])
+    else:
+        try:
+            conn = psycopg2.connect(
+                database="LvbleHomeAssignment", user='postgres', password='s2512160', host="localhost", port='5433'
+            )
+            conn.autocommit = True
+            cursor = conn.cursor()
+            columnsData = [PayNowParamsResponse["Result"]["user"]["Login"], UserProfileResponse["Result"]["city"],
+                           tenant_portal, PayNowParamsResponse["Result"]["user"]["Email"],
+                           PayNowParamsResponse["Result"]["user"]["Cellphone"]]
+            postgresHandler.insertIntoDBTable(cursor, columnsData)
+            conn.close()
+        except Exception as e:
+            print("We got problem update the DB " + e.args[0])
+
+
+def clickpayConnectDB(tableName):
     # creating the DB that save the data
     # postgres
     correctConnection = True
@@ -32,42 +63,28 @@ if __name__ == '__main__':
     )
     conn.autocommit = True
     cursor = conn.cursor()
-    postgresHandler.createTables(cursor)
+    postgresHandler.createTables(cursor, tableName)
     conn.close()
 
-    ###############################################################################
-    ###############################################################################
-    # login into click_pay
-    # postgres
-    tenant_portal = "click_pay"
-    username = 'micael.lasry@gmail.com'
-    password = 'Micael123'
 
-    passwordUserIncorrect = True
+if __name__ == '__main__':
     try:
-        with requests.Session() as s:
-            loginParams = clickPayrequests.login(username, password)
-            UserProfileParams = clickPayrequests.getUserProfileData()
-            PayNowParams = clickPayrequests.getPayNowData()
-            loginResponse = s.post(loginParams[0], headers=loginParams[2], data=loginParams[1])
-            UserProfileResponse = s.post(UserProfileParams[0], headers=UserProfileParams[2], data=UserProfileParams[1])
-            PayNowParamsResponse = s.post(PayNowParams[0], headers=PayNowParams[2], data=PayNowParams[1])
+        tenant_portal = sys.argv[1]
+        user = sys.argv[2]
+        passw = sys.argv[3]
     except Exception as e:
-        print("We got some problems to connect")
+        print("There is problem with the arguments")
 
-    if 'Error' in PayNowParamsResponse.json():
-        print("Error accrue: " + PayNowParamsResponse.json()['Error']['Text'])
+    # tenant_portal = 'click_pay'
+    # user = 'micael.lasry@gmail.com'
+    # passw = 'Micael123'
+
+    if tenant_portal == 'click_pay':
+        clickpayConnectDB(tenant_portal)
+        clickpayConnect(user, passw)
+    elif tenant_portal == 'activebuilding':
+        print("We can't connect this website yet")
+    elif tenant_portal == 'activebuilding':
+        print("We can't connect this website yet")
     else:
-        try:
-            conn = psycopg2.connect(
-                database="LvbleHomeAssignment", user='postgres', password='s2512160', host="localhost", port='5433'
-            )
-            conn.autocommit = True
-            cursor = conn.cursor()
-            columnsData = [PayNowParamsResponse["Result"]["user"]["Login"], UserProfileResponse["Result"]["city"],
-                           tenant_portal, PayNowParamsResponse["Result"]["user"]["Email"],
-                           PayNowParamsResponse["Result"]["user"]["Cellphone"]]
-            postgresHandler.insertIntoDBTable(cursor, columnsData)
-            conn.close()
-        except Exception as e:
-            print("We got problem update the DB " + e.args[0])
+        print("We can't connect this website")
